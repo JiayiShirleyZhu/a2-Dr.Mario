@@ -1,8 +1,8 @@
 import shlex
-import user_interface
+import game_print
 import game_logic
 
-if __name__ == '__main__':
+def get_input_set_field():
     rows = int(input())
     columns = int(input())
     field_setting = input().strip().upper()
@@ -19,50 +19,51 @@ if __name__ == '__main__':
     else:
         raise ValueError("Field setting can only be 'EMPTY' or 'CONTENTS'")
     
-    user_interface.render_field(columns, game_state.field)
+    return game_state
+
+
+
+if __name__ == '__main__':
+    game_state = get_input_set_field()
 
     while True:
+        game_print.print_field(game_state)
+        game_print.level_cleared(game_state)
         command = input()
         if command.strip().upper() == 'Q':
             break
         
         if command.strip() == '':
             game_state.time_passed()
+            continue
 
         command_lst = shlex.split(command)
 
         if command_lst[0] == 'F':
-            try:
-                left_color = command_lst[1]
-                right_color = command_lst[2]
-                game_state.create_faller(left_color, right_color)
-            except IndexError:
-                print("Invaild input, please write in the form '[comamnd][left color][right color]'")
+            left_color = command_lst[1]
+            right_color = command_lst[2]
+            result = game_state.create_faller(left_color, right_color)
+            if result == "game over":
+                game_print.game_over()
+                break
 
         elif command_lst[0] == 'V':
-            try:
-                row = command_lst[1]
-                column = command_lst[2]
-                color = command_lst[3]
-                game_state.create_virus(row, column, color)
-            except IndexError:
-                print("Invaild input, please write in the form '[comamnd][row][column][color]'")
+            row = int(command_lst[1])
+            column = int(command_lst[2])
+            color = command_lst[3]
+            game_state.create_virus(row, column, color)
 
         elif command_lst[0] == 'A':
-            game_state.faller.rotate_clockwise()
-
+            game_state.rotate_clockwise()
+          
         elif command_lst[0] == 'B':
-            game_state.faller.rotate_counterclockwise()
-
-        elif command_lst[0] == '>':
-            game_state.faller.move_left()
+            game_state.rotate_counterclockwise()
 
         elif command_lst[0] == '<':
-            game_state.faller.move_right()
+            game_state.move_left()
+
+        elif command_lst[0] == '>':
+            game_state.move_right()
+
 
         
-
-
-        
-
-
