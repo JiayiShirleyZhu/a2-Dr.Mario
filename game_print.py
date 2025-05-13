@@ -26,7 +26,7 @@ def print_field(game_state):
                 display_field[capsule[0].row][capsule[0].col] = f'|{capsule[0].color}|'
                 display_field[capsule[1].row][capsule[1].col] = f'|{capsule[1].color}|'
 
-    for r, c in game_state.matched_positions:
+    for r, c in game_state.find_matching():
         display_field[r][c] = f"*{game_state.field[r][c]}*"
     
     for row in display_field:

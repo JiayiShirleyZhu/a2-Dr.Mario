@@ -42,8 +42,9 @@ if __name__ == '__main__':
         if command_lst[0] == 'F':
             left_color = command_lst[1]
             right_color = command_lst[2]
-            result = game_state.create_faller(left_color, right_color)
-            if result == "game over":
+            game_state.create_faller(left_color, right_color)
+            if game_state.game_over:
+                game_print.print_field(game_state)
                 game_print.game_over()
                 break
 

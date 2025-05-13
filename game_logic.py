@@ -7,6 +7,8 @@ class HalfCapsule:
         self.state = state #falling, landed, frozen
         self.pair = pair # another HalfCapsule object
         self.pair_orientation = orientation
+        self.delay = False
+
 
 class GameState:
     def __init__(self):
@@ -16,9 +18,9 @@ class GameState:
         self.faller = None
         self.half_capsules = []
         self.capsules = []
-        self.matched_positions = set()
         self.matching_ready = False
         self.capsule_landed_last_time = False
+        self.game_over = False
 
     def initialize_field(self, rows: int, columns: int, setting: str, contents: list[str] = None) -> None: 
         self.rows = rows
@@ -34,12 +36,19 @@ class GameState:
                     raise ValueError(f"Line {i + 1} must have exactly {columns} characters.")
                 for j, character in enumerate(line):
                     self.field[i][j] = ' ' if character == ' ' else character
+
+            for i in range(self.rows):
+                for j in range(self.columns):
+                    character = self.field[i][j]
                     if character.isupper():
-                        half_capsule = HalfCapsule(character, i, j, 'falling')
+                        if i == self.rows - 1 or self.field[i + 1][j] != ' ':
+                            half_capsule = HalfCapsule(character, i, j, 'frozen')
+                        else:
+                            half_capsule = HalfCapsule(character, i, j, 'falling')
                         self.half_capsules.append(half_capsule)
-            self.matched_positions = self.find_matching()
-            self.matching_ready = True
-                        
+
+            self.find_matching()
+            self.matching_ready = True                  
     
     def time_passed(self):
         if self.matching_ready:
@@ -58,12 +67,13 @@ class GameState:
             self.faller = None
             self.capsule_landed_last_time = False
 
-        self.matched_positions = self.find_matching()
+        self.find_matching()
         self.matching_ready = True
+
         
     def create_faller(self, color1, color2):
         if self.faller:
-            return "faller exists"
+            return
         
         if self.columns % 2 != 0:
             col = self.columns // 2
@@ -71,7 +81,7 @@ class GameState:
             col = self.columns // 2 - 1
         
         if self.field[1][col] != ' ' or self.field[1][col + 1] != ' ':
-            return "game over"
+            self.game_over = True
         
         if self.field[2][col] == ' ' and self.field[2][col + 1] == ' ':
             half_capsule1 = HalfCapsule(color1, 1, col, 'falling')
@@ -87,7 +97,7 @@ class GameState:
 
         self.field[1][col] = color1
         self.field[1][col + 1] = color2
-        self.faller = [half_capsule1, half_capsule2]
+        self.faller = (half_capsule1, half_capsule2)
         self.capsules.append(self.faller)
     
     def create_virus(self, row, col, color):
@@ -97,6 +107,9 @@ class GameState:
     def apply_gravity(self):
         for half_capsule in self.half_capsules:# apply gravity on half capsule
             if half_capsule.state == 'falling':
+                if half_capsule.delay:
+                    half_capsule.delay = False
+                    continue
                 if half_capsule.row < self.rows - 1 and self.field[half_capsule.row + 1][half_capsule.col] == ' ':
                     self.field[half_capsule.row + 1][half_capsule.col] = half_capsule.color
                     self.field[half_capsule.row][half_capsule.col] = ' '
@@ -135,6 +148,26 @@ class GameState:
                         or self.field[capsule[0].row + 1][capsule[0].col] != ' ':
                         capsule[0].state = 'landed'
                         capsule[1].state = 'landed'
+
+            elif capsule[0].state == 'frozen' and capsule[1].state == 'frozen':
+                if capsule[0].pair_orientation == 'horizontal':
+                    if capsule[0].row < self.rows - 1 \
+                        and self.field[capsule[0].row + 1][capsule[0].col] == ' ' \
+                        and self.field[capsule[1].row + 1][capsule[1].col] == ' ':
+                        self.field[capsule[0].row + 1][capsule[0].col] = capsule[0].color
+                        self.field[capsule[0].row][capsule[0].col] = ' '
+                        capsule[0].row += 1
+                        self.field[capsule[1].row + 1][capsule[1].col] = capsule[1].color
+                        self.field[capsule[1].row][capsule[1].col] = ' '
+                        capsule[1].row += 1
+                else:
+                    if capsule[0].row < self.rows - 1 \
+                        and self.field[capsule[0].row + 1][capsule[0].col] == ' ':
+                        self.field[capsule[0].row + 1][capsule[0].col] = capsule[0].color
+                        self.field[capsule[1].row + 1][capsule[1].col] = capsule[1].color
+                        self.field[capsule[1].row][capsule[1].col] = ' '
+                        capsule[0].row += 1
+                        capsule[1].row += 1
 
     def _can_match(self, half_capsule):
         return half_capsule.state == 'frozen'
@@ -181,15 +214,17 @@ class GameState:
         remove_lst2 = []
         for capsule in self.capsules:
             if (capsule[0].row, capsule[0].col) in matched_set and (capsule[1].row, capsule[1].col) in matched_set:
-                remove_lst2.append([capsule[0], capsule[1]])
+                remove_lst2.append((capsule[0], capsule[1]))
             elif (capsule[0].row, capsule[0].col) in matched_set:
-                remove_lst2.append([capsule[0], capsule[1]])
+                remove_lst2.append((capsule[0], capsule[1]))
                 capsule[1].state = 'falling'
                 self.half_capsules.append(capsule[1])
+                capsule[1].delay = True
             elif (capsule[1].row, capsule[1].col) in matched_set:
-                remove_lst2.append([capsule[0], capsule[1]])
+                remove_lst2.append((capsule[0], capsule[1]))
                 capsule[0].state = 'falling'
-                self.half_capsules.append(capsule[0])
+                capsule[0].delay = True
+                self.half_capsules.append(capsule[0])             
         
         for capsule in remove_lst2:
             self.capsules.remove(capsule)
@@ -283,12 +318,11 @@ class GameState:
                 self.faller[1].col += 1
                 self.faller[0].pair_orientation = 'horizontal'
                 self.faller[1].pair_orientation = 'horizontal'
-            elif c1 > 0 and self.field[r1][c1 + 1] != ' ': #wall kick
-                self.move_left()
+            elif 0 < r1 < self.rows and 0 < c1 < self.columns - 1 and self.field[r1][c1 + 1] != ' ': #wall kick
                 self.field[r1][c1 - 1] = self.faller[0].color
                 self.field[r1][c1] = self.faller[1].color
                 self.field[r2][c2] = ' '
-                self.faller[0].col += 1
+                self.faller[0].col -= 1
                 self.faller[1].row += 1
                 self.faller[0].pair_orientation = 'horizontal'
                 self.faller[1].pair_orientation = 'horizontal'
@@ -324,8 +358,8 @@ class GameState:
                 self.faller[1].col += 1
                 self.faller[0].pair_orientation = 'horizontal'
                 self.faller[1].pair_orientation = 'horizontal'
-            elif c1 > 0 and self.field[r1][c1 + 1] != ' ': #wall kick
-                self.field[r1 + 1][c1 - 1] = self.faller[1].color
+            elif 0 < r1 < self.rows and 0 < c1 < self.columns - 1 and self.field[r1][c1 + 1] != ' ': #wall kick
+                self.field[r1][c1 - 1] = self.faller[1].color
                 self.field[r2][c2] = ' '
                 original_color1 = self.faller[0].color
                 self.faller[0].color = self.faller[1].color
@@ -347,3 +381,4 @@ class GameState:
             return True        
         else:
             return False
+
