@@ -1,23 +1,23 @@
-#Dr. Mario (Text Version)
+# Dr. Mario (Text Version)
 
 This is a simple version of Dr. Mario written in Python. The game runs in the terminal. You control capsules and try to match colors to clear viruses.
 
 
-#How to Run:
+# How to Run:
 
 python3 a2.py
 
 
 You will be asked to input:
 
--number of rows
+- number of rows
 
--number of columns
+- number of columns
 
--EMPTY or CONTENTS
+- EMPTY or CONTENTS
 
 
-#Commands:
+# Commands:
 
 - F: create a faller
 
@@ -34,15 +34,15 @@ You will be asked to input:
 - Q: quit
 
 
-#Files:
+# Files:
 
--a2.py: main game loop
+- a2.py: main game loop
 
--game_logic.py: game logic
+- game_logic.py: game logic
 
--game_print.py: print the game field
+- game_print.py: print the game field
 
 
-#Made by:
+# Made by:
 
 Jiayi Zhu
