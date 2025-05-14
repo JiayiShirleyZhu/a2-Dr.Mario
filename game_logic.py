@@ -1,13 +1,12 @@
 
 class HalfCapsule:
-    def __init__(self, color, row, col, state, pair = None, orientation = None):
+    def __init__(self, color: str, row: int, col: int, state: str, orientation: str = None) -> None:
         self.color = color.upper()
         self.row = row # The index of the cell
         self.col = col
         self.state = state #falling, landed, frozen
-        self.pair = pair # another HalfCapsule object
-        self.pair_orientation = orientation
-        self.delay = False
+        self.orientation = orientation #if it and another half capsule form a capsule, they will have a orientation indicating whether they are horizontal or vertical
+        self.delay = False #this is used when half capsule detach from another half capsule
 
 
 class GameState:
@@ -19,7 +18,6 @@ class GameState:
         self.half_capsules = []
         self.capsules = []
         self.matching_ready = False
-        self.capsule_landed_last_time = False
         self.game_over = False
 
     def initialize_field(self, rows: int, columns: int, setting: str, contents: list[str] = None) -> None: 
@@ -33,7 +31,7 @@ class GameState:
         elif setting == 'CONTENTS':
             for i, line in enumerate(contents):
                 if len(line) != columns:
-                    raise ValueError(f"Line {i + 1} must have exactly {columns} characters.")
+                    raise ValueError(f"Line {i + 1} must have exactly {self.columns} characters.")
                 for j, character in enumerate(line):
                     self.field[i][j] = ' ' if character == ' ' else character
 
@@ -50,28 +48,22 @@ class GameState:
             self.find_matching()
             self.matching_ready = True                  
     
-    def time_passed(self):
+    def time_passed(self) -> None:
         if self.matching_ready:
             self.clear_matching()
             self.matching_ready = False
         
         self.apply_gravity()
 
-        if self.faller and all(hc.state == 'landed' for hc in self.faller) and not self.capsule_landed_last_time:
-            self.capsule_landed_last_time = True
-            return
-
-        if self.faller and all(hc.state == 'landed' for hc in self.faller) and self.capsule_landed_last_time:
-            for half_capsule in self.faller:
-                half_capsule.state = 'frozen'
+        if self.faller and self.faller[0].state == 'landed' and self.faller[1].state == 'landed':
+            self.faller[0].state = 'frozen'
+            self.faller[1].state = 'frozen'
             self.faller = None
-            self.capsule_landed_last_time = False
-
+        
         self.find_matching()
         self.matching_ready = True
-
         
-    def create_faller(self, color1, color2):
+    def create_faller(self, color1: str, color2: str) -> None:
         if self.faller:
             return
         
@@ -83,28 +75,51 @@ class GameState:
         if self.field[1][col] != ' ' or self.field[1][col + 1] != ' ':
             self.game_over = True
         
-        if self.field[2][col] == ' ' and self.field[2][col + 1] == ' ':
-            half_capsule1 = HalfCapsule(color1, 1, col, 'falling')
-            half_capsule2 = HalfCapsule(color2, 1, col + 1, 'falling')
-        else:
-            half_capsule1 = HalfCapsule(color1, 1, col, 'landed')
-            half_capsule2 = HalfCapsule(color2, 1, col + 1, 'landed')
-            self.capsule_landed_last_time = True
-        half_capsule1.pair = half_capsule2
-        half_capsule2.pair = half_capsule1
-        half_capsule1.pair_orientation = 'horizontal'
-        half_capsule2.pair_orientation = 'horizontal'
+        half_capsule1 = HalfCapsule(color1, 1, col, 'falling')
+        half_capsule2 = HalfCapsule(color2, 1, col + 1, 'falling')
+        half_capsule1.orientation = 'horizontal'
+        half_capsule2.orientation = 'horizontal'
 
         self.field[1][col] = color1
         self.field[1][col + 1] = color2
         self.faller = (half_capsule1, half_capsule2)
         self.capsules.append(self.faller)
     
-    def create_virus(self, row, col, color):
-        if 0 <= row < self.rows and 0 <= col < self.columns:
+    def test_faller_state(self) -> None:
+        if self.faller and self.faller[0].state == 'falling' and self.faller[1].state == 'falling':
+            if self.faller[0].orientation == 'horizontal':
+                if self.faller[0].row == self.rows - 1 \
+                    or self.field[self.faller[0].row + 1][self.faller[0].col] != ' ' \
+                    or self.field[self.faller[1].row + 1][self.faller[1].col] != ' ':
+                    self.faller[0].state = 'landed'
+                    self.faller[1].state = 'landed'
+            else:
+                if self.faller[0].row == self.rows - 1 \
+                    or self.field[self.faller[0].row + 1][self.faller[0].col] != ' ':
+                    self.faller[0].state = 'landed'
+                    self.faller[1].state = 'landed'
+            return
+
+        if self.faller and self.faller[0].state == 'landed' and self.faller[1].state == 'landed':
+            if self.faller[0].orientation == 'horizontal':
+                if 0 <= self.faller[0].row < self.rows - 1 \
+                    and self.field[self.faller[0].row + 1][self.faller[0].col] == ' ' \
+                    and self.field[self.faller[1].row + 1][self.faller[1].col] == ' ':
+                    self.faller[0].state = 'falling'
+                    self.faller[1].state = 'falling'
+            else:
+                if  0 <= self.faller[0].row < self.rows - 1 \
+                    and self.field[self.faller[0].row + 1][self.faller[0].col] == ' ':
+                    self.faller[0].state = 'falling'
+                    self.faller[1].state = 'falling'
+            return
+
+
+    def create_virus(self, row: int, col: int, color: str) -> None:
+        if 0 <= row < self.rows and 0 <= col < self.columns and self.field[row][col] == ' ':
             self.field[row][col] = color.lower()
 
-    def apply_gravity(self):
+    def apply_gravity(self) -> None:
         for half_capsule in self.half_capsules:# apply gravity on half capsule
             if half_capsule.state == 'falling':
                 if half_capsule.delay:
@@ -117,10 +132,14 @@ class GameState:
                 
                 if half_capsule.row == self.rows - 1 or self.field[half_capsule.row + 1][half_capsule.col] != ' ':
                     half_capsule.state = 'frozen'
+            
+            if half_capsule.state == 'frozen':
+                if half_capsule.row < self.rows - 1 and self.field[half_capsule.row + 1][half_capsule.col] == ' ':
+                    half_capsule.state = 'falling'
         
         for capsule in self.capsules: # apply gravity on capsule
             if capsule[0].state == 'falling' and capsule[1].state == 'falling':
-                if capsule[0].pair_orientation == 'horizontal':
+                if capsule[0].orientation == 'horizontal':
                     if capsule[0].row < self.rows - 1 \
                         and self.field[capsule[0].row + 1][capsule[0].col] == ' ' \
                         and self.field[capsule[1].row + 1][capsule[1].col] == ' ':
@@ -130,11 +149,6 @@ class GameState:
                         self.field[capsule[1].row + 1][capsule[1].col] = capsule[1].color
                         self.field[capsule[1].row][capsule[1].col] = ' '
                         capsule[1].row += 1
-                    if capsule[0].row == self.rows - 1 \
-                        or self.field[capsule[0].row + 1][capsule[0].col] != ' ' \
-                        or self.field[capsule[1].row + 1][capsule[1].col] != ' ':
-                        capsule[0].state = 'landed'
-                        capsule[1].state = 'landed'
                 else:
                     if capsule[0].row < self.rows - 1 \
                         and self.field[capsule[0].row + 1][capsule[0].col] == ' ':
@@ -144,35 +158,12 @@ class GameState:
                         self.field[capsule[1].row][capsule[1].col] = ' '
                         capsule[0].row += 1
                         capsule[1].row += 1
-                    if capsule[0].row == self.rows - 1 \
-                        or self.field[capsule[0].row + 1][capsule[0].col] != ' ':
-                        capsule[0].state = 'landed'
-                        capsule[1].state = 'landed'
 
-            elif capsule[0].state == 'frozen' and capsule[1].state == 'frozen':
-                if capsule[0].pair_orientation == 'horizontal':
-                    if capsule[0].row < self.rows - 1 \
-                        and self.field[capsule[0].row + 1][capsule[0].col] == ' ' \
-                        and self.field[capsule[1].row + 1][capsule[1].col] == ' ':
-                        self.field[capsule[0].row + 1][capsule[0].col] = capsule[0].color
-                        self.field[capsule[0].row][capsule[0].col] = ' '
-                        capsule[0].row += 1
-                        self.field[capsule[1].row + 1][capsule[1].col] = capsule[1].color
-                        self.field[capsule[1].row][capsule[1].col] = ' '
-                        capsule[1].row += 1
-                else:
-                    if capsule[0].row < self.rows - 1 \
-                        and self.field[capsule[0].row + 1][capsule[0].col] == ' ':
-                        self.field[capsule[0].row + 1][capsule[0].col] = capsule[0].color
-                        self.field[capsule[1].row + 1][capsule[1].col] = capsule[1].color
-                        self.field[capsule[1].row][capsule[1].col] = ' '
-                        capsule[0].row += 1
-                        capsule[1].row += 1
 
-    def _can_match(self, half_capsule):
+    def _can_match(self, half_capsule: HalfCapsule) -> bool:
         return half_capsule.state == 'frozen'
 
-    def find_matching(self):
+    def find_matching(self) -> set[tuple[int, int]]:
         not_match_lst = []
         matched_set = set()
         for half_capsule in self.half_capsules:
@@ -201,7 +192,7 @@ class GameState:
 
         return matched_set
 
-    def clear_matching(self):
+    def clear_matching(self) -> None:
         matched_set = self.find_matching()
         remove_lst1 = []
         for half_capsule in self.half_capsules:
@@ -232,13 +223,16 @@ class GameState:
         for r, c in matched_set:
             self.field[r][c] = ' '
 
-    def move_left(self):
+    def move_left(self) -> None:
+        if not self.faller:
+            return
+        
         r1 = self.faller[0].row
         c1 = self.faller[0].col
         r2 = self.faller[1].row
         c2 = self.faller[1].col
 
-        if self.faller[0].pair_orientation == 'horizontal':
+        if self.faller[0].orientation == 'horizontal':
             if c1 > 0 and self.field[r1][c1 - 1] == ' ':
                 self.field[r1][c1 - 1] = self.faller[0].color
                 self.field[r1][c1] = self.faller[1].color
@@ -249,7 +243,7 @@ class GameState:
             else:
                 return 
         else:
-            if c1 > 0 and self.field[r1][c1 - 1] == ' ':
+            if c1 > 0 and c2 > 0 and self.field[r1][c1 - 1] == ' ' and self.field[r2][c2 - 1] == ' ':
                 self.field[r1][c1 - 1] = self.faller[0].color
                 self.field[r2][c2 - 1] = self.faller[1].color
                 self.field[r1][c1] = ' '
@@ -260,13 +254,16 @@ class GameState:
             else:
                 return 
     
-    def move_right(self):
+    def move_right(self) -> None:
+        if not self.faller:
+            return
+        
         r1 = self.faller[0].row
         c1 = self.faller[0].col
         r2 = self.faller[1].row
         c2 = self.faller[1].col
         
-        if self.faller[0].pair_orientation == 'horizontal':
+        if self.faller[0].orientation == 'horizontal':
             if c2 < self.columns - 1 and self.field[r2][c2 + 1] == ' ':
                 self.field[r2][c2 + 1] = self.faller[1].color
                 self.field[r2][c2] = self.faller[0].color
@@ -277,7 +274,7 @@ class GameState:
             else:
                 return 
         else:
-            if c1 < self.columns - 1 and self.field[r1][c1 + 1] == ' ':
+            if c1 < self.columns - 1 and c2 < self.columns - 1 and self.field[r1][c1 + 1] == ' ' and self.field[r2][c2 + 1] == ' ':
                 self.field[r1][c1 + 1] = self.faller[0].color
                 self.field[r2][c2 + 1] = self.faller[1].color
                 self.field[r1][c1] = ' '
@@ -288,14 +285,18 @@ class GameState:
             else:
                 return 
 
-    def rotate_clockwise(self):
+
+    def rotate_clockwise(self) -> None:
+        if not self.faller:
+            return
+        
         r1 = self.faller[0].row
         c1 = self.faller[0].col
         r2 = self.faller[1].row
         c2 = self.faller[1].col
 
-        if self.faller[0].pair_orientation == 'horizontal':
-            if 0 < r1 < self.rows and 0 <= c1 < self.columns - 1:
+        if self.faller[0].orientation == 'horizontal':
+            if 0 < r1 < self.rows and 0 <= c1 < self.columns - 1 and self.field[r1 - 1][c1] == ' ':
                 self.field[r1 - 1][c1] = self.faller[0].color
                 self.field[r1][c1] = self.faller[1].color
                 self.field[r2][c2] = ' '
@@ -305,8 +306,8 @@ class GameState:
                 # keep the self.faller[0] always be the bottom left half capsule
                 self.faller[1].row -= 1
                 self.faller[1].col -= 1
-                self.faller[0].pair_orientation = 'vertical'
-                self.faller[1].pair_orientation = 'vertical'
+                self.faller[0].orientation = 'vertical'
+                self.faller[1].orientation = 'vertical'
             else:
                 return
                 
@@ -316,33 +317,37 @@ class GameState:
                 self.field[r2][c2] = ' '
                 self.faller[1].row += 1
                 self.faller[1].col += 1
-                self.faller[0].pair_orientation = 'horizontal'
-                self.faller[1].pair_orientation = 'horizontal'
-            elif 0 < r1 < self.rows and 0 < c1 < self.columns - 1 and self.field[r1][c1 + 1] != ' ': #wall kick
+                self.faller[0].orientation = 'horizontal'
+                self.faller[1].orientation = 'horizontal'
+            elif 0 < r1 < self.rows and 0 < c1 <= self.columns - 1 and self.field[r1][c1 - 1] == ' ': #wall kick
                 self.field[r1][c1 - 1] = self.faller[0].color
                 self.field[r1][c1] = self.faller[1].color
                 self.field[r2][c2] = ' '
                 self.faller[0].col -= 1
                 self.faller[1].row += 1
-                self.faller[0].pair_orientation = 'horizontal'
-                self.faller[1].pair_orientation = 'horizontal'
+                self.faller[0].orientation = 'horizontal'
+                self.faller[1].orientation = 'horizontal'
             else:
                 return
+    
 
-    def rotate_counterclockwise(self):
+    def rotate_counterclockwise(self) -> None:
+        if not self.faller:
+            return
+        
         r1 = self.faller[0].row
         c1 = self.faller[0].col
         r2 = self.faller[1].row
         c2 = self.faller[1].col
 
-        if self.faller[0].pair_orientation == 'horizontal':
-            if 0 < r1 < self.rows and 0 <= c1 < self.columns - 1:
+        if self.faller[0].orientation == 'horizontal':
+            if 0 < r1 < self.rows and 0 <= c1 < self.columns - 1 and self.field[r1 - 1][c1] == ' ':
                 self.field[r1 - 1][c1] = self.faller[1].color
                 self.field[r2][c2] = ' '
                 self.faller[1].row -= 1
                 self.faller[1].col -= 1
-                self.faller[0].pair_orientation = 'vertical'
-                self.faller[1].pair_orientation = 'vertical'
+                self.faller[0].orientation = 'vertical'
+                self.faller[1].orientation = 'vertical'
             else:
                 return
                 
@@ -356,9 +361,9 @@ class GameState:
                 self.faller[1].color = original_color1
                 self.faller[1].row += 1
                 self.faller[1].col += 1
-                self.faller[0].pair_orientation = 'horizontal'
-                self.faller[1].pair_orientation = 'horizontal'
-            elif 0 < r1 < self.rows and 0 < c1 < self.columns - 1 and self.field[r1][c1 + 1] != ' ': #wall kick
+                self.faller[0].orientation = 'horizontal'
+                self.faller[1].orientation = 'horizontal'
+            elif 0 < r1 < self.rows and 0 < c1 <= self.columns - 1 and self.field[r1][c1 - 1] == ' ': #wall kick
                 self.field[r1][c1 - 1] = self.faller[1].color
                 self.field[r2][c2] = ' '
                 original_color1 = self.faller[0].color
@@ -366,10 +371,11 @@ class GameState:
                 self.faller[1].color = original_color1
                 self.faller[0].col -= 1
                 self.faller[1].row += 1
-                self.faller[0].pair_orientation = 'horizontal'
-                self.faller[1].pair_orientation = 'horizontal'
+                self.faller[0].orientation = 'horizontal'
+                self.faller[1].orientation = 'horizontal'
             else:
                 return
+ 
     
     def detect_viruses(self) -> bool:
         count = 0

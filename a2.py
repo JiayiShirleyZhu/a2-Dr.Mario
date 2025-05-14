@@ -2,7 +2,7 @@ import shlex
 import game_print
 import game_logic
 
-def get_input_set_field():
+def get_input_set_field() -> game_logic.GameState:
     rows = int(input())
     columns = int(input())
     field_setting = input().strip().upper()
@@ -27,6 +27,7 @@ if __name__ == '__main__':
     game_state = get_input_set_field()
 
     while True:
+        game_state.test_faller_state()
         game_print.print_field(game_state)
         game_print.level_cleared(game_state)
         command = input()
@@ -44,6 +45,7 @@ if __name__ == '__main__':
             right_color = command_lst[2]
             game_state.create_faller(left_color, right_color)
             if game_state.game_over:
+                game_state.test_faller_state()
                 game_print.print_field(game_state)
                 game_print.game_over()
                 break
@@ -65,6 +67,3 @@ if __name__ == '__main__':
 
         elif command_lst[0] == '>':
             game_state.move_right()
-
-
-        

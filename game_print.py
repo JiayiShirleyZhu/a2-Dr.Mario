@@ -1,4 +1,6 @@
-def print_field(game_state):
+import game_logic
+
+def print_field(game_state: game_logic.GameState) -> None:
     display_field = []
     for r in range(game_state.rows):
         row_display = []
@@ -8,7 +10,7 @@ def print_field(game_state):
         display_field.append(row_display)
 
     for capsule in game_state.capsules:
-        if capsule[0].pair_orientation == 'horizontal' and capsule[1].pair_orientation == 'horizontal':
+        if capsule[0].orientation == 'horizontal' and capsule[1].orientation == 'horizontal':
             if capsule[0].state == 'falling':
                 display_field[capsule[0].row][capsule[0].col] = f'[{capsule[0].color}-'
                 display_field[capsule[1].row][capsule[1].col] = f'-{capsule[1].color}]'
@@ -18,7 +20,7 @@ def print_field(game_state):
             elif capsule[0].state == 'frozen':
                 display_field[capsule[0].row][capsule[0].col] = f' {capsule[0].color}-'
                 display_field[capsule[1].row][capsule[1].col] = f'-{capsule[1].color} '
-        elif capsule[0].pair_orientation == 'vertical' and capsule[1].pair_orientation == 'vertical':
+        elif capsule[0].orientation == 'vertical' and capsule[1].orientation == 'vertical':
             if capsule[0].state == 'falling':
                 display_field[capsule[0].row][capsule[0].col] = f'[{capsule[0].color}]'
                 display_field[capsule[1].row][capsule[1].col] = f'[{capsule[1].color}]'
@@ -33,9 +35,9 @@ def print_field(game_state):
         print("|" + ''.join(row) + "|")
     print(' ' + '---' * game_state.columns + ' ')
 
-def level_cleared(game_state):
+def level_cleared(game_state: game_logic.GameState) -> None:
     if not game_state.detect_viruses():
         print("LEVEL CLEARED")
 
-def game_over():
+def game_over() -> None:
     print("GAME OVER")
