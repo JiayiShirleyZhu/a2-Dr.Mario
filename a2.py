@@ -2,7 +2,14 @@ import shlex
 import game_print
 import game_logic
 
+
 def get_input_set_field() -> game_logic.GameState:
+    """
+    Reads input to set up the game field and returns the initial game state.
+
+    Returns:
+        GameState: The initialized game state.
+    """
     rows = int(input())
     columns = int(input())
     field_setting = input().strip().upper()
@@ -18,12 +25,15 @@ def get_input_set_field() -> game_logic.GameState:
 
     else:
         raise ValueError("Field setting can only be 'EMPTY' or 'CONTENTS'")
-    
+
     return game_state
 
 
-
 if __name__ == '__main__':
+    """
+    Main loop that runs the Dr. Mario game logic. It reads commands
+    from the user and updates the game state until the player quits.
+    """
     game_state = get_input_set_field()
 
     while True:
@@ -33,7 +43,7 @@ if __name__ == '__main__':
         command = input()
         if command.strip().upper() == 'Q':
             break
-        
+
         if command.strip() == '':
             game_state.time_passed()
             continue
@@ -58,7 +68,7 @@ if __name__ == '__main__':
 
         elif command_lst[0] == 'A':
             game_state.rotate_clockwise()
-          
+
         elif command_lst[0] == 'B':
             game_state.rotate_counterclockwise()
 

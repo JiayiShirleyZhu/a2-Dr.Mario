@@ -1,6 +1,14 @@
 import game_logic
 
+
 def print_field(game_state: game_logic.GameState) -> None:
+    """
+    Prints the current game field, showing all capsules, their states,
+    and highlighting matched positions.
+
+    Args:
+        game_state (GameState): The current state of the game.
+    """
     display_field = []
     for r in range(game_state.rows):
         row_display = []
@@ -30,14 +38,25 @@ def print_field(game_state: game_logic.GameState) -> None:
 
     for r, c in game_state.find_matching():
         display_field[r][c] = f"*{game_state.field[r][c]}*"
-    
+
     for row in display_field:
         print("|" + ''.join(row) + "|")
     print(' ' + '---' * game_state.columns + ' ')
 
+
 def level_cleared(game_state: game_logic.GameState) -> None:
+    """
+    Checks if the level is cleared (no viruses left) and prints a message.
+
+    Args:
+        game_state (GameState): The current state of the game.
+    """
     if not game_state.detect_viruses():
         print("LEVEL CLEARED")
 
+
 def game_over() -> None:
+    """
+    Prints the game over message.
+    """
     print("GAME OVER")
